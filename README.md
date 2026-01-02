@@ -1,16 +1,13 @@
-# flutter_application_doancuoiki
+# flutter_cuoiki
 
-A new Flutter project.
+Đồ án Flutter cuối kỳ.
 
-## Getting Started
+## Mô tả
+Ứng dụng được xây dựng bằng Flutter phục vụ cho đồ án môn học.
 
-This project is a starting point for a Flutter application.
+## Công nghệ sử dụng
+- Flutter
+- Dart
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Sinh viên thực hiện
+- Nguyễn Hoài
