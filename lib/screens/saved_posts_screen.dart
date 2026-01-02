@@ -4,6 +4,7 @@ import '../providers/auth_provider.dart';
 import '../providers/post_provider.dart';
 import 'post_detail_screen.dart';
 import '../widgets/main_layout.dart';
+import '../widgets/post_image.dart';
 
 class SavedPostsScreen extends StatelessWidget {
   const SavedPostsScreen({super.key});
@@ -100,10 +101,10 @@ class SavedPostsScreen extends StatelessWidget {
                               child: AspectRatio(
                                 aspectRatio: 1,
                                 child: post.images.isNotEmpty
-                                    ? Image.network(
-                                        post.images.first,
+                                    ? PostImage(
+                                        url: post.images.first,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => Container(
+                                        placeholder: Container(
                                           color: Colors.grey[200],
                                           child: const Icon(Icons.image, size: 40, color: Colors.grey),
                                         ),

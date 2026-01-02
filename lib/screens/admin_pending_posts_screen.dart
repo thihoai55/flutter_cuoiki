@@ -5,6 +5,7 @@ import '../providers/post_provider.dart';
 import '../providers/notification_provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/post.dart';
+import '../widgets/post_image.dart';
 
 class AdminPendingPostsScreen extends StatelessWidget {
   const AdminPendingPostsScreen({super.key});
@@ -74,8 +75,8 @@ class _PostApprovalCard extends StatelessWidget {
                 if (post.image != null)
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      post.image!,
+                    child: PostImage(
+                      url: post.image!,
                       width: 80,
                       height: 80,
                       fit: BoxFit.cover,

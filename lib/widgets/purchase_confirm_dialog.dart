@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/transaction.dart';
+import 'post_image.dart';
 
 class PurchaseConfirmDialog extends StatefulWidget {
   const PurchaseConfirmDialog({
@@ -207,18 +208,18 @@ class _PurchaseConfirmDialogState extends State<PurchaseConfirmDialog> {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: Image.network(
-              widget.postImage ?? '',
-              width: 80,
-              height: 80,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
-                width: 80,
-                height: 80,
-                color: Colors.grey.shade300,
-                child: const Icon(Icons.image, color: Colors.white70),
-              ),
-            ),
+                child: PostImage(
+                  url: widget.postImage ?? '',
+                  width: 80,
+                  height: 80,
+                  fit: BoxFit.cover,
+                  placeholder: Container(
+                    width: 80,
+                    height: 80,
+                    color: Colors.grey.shade300,
+                    child: const Icon(Icons.image, color: Colors.white70),
+                  ),
+                ),
           ),
           const SizedBox(width: 10),
           Expanded(

@@ -64,6 +64,8 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       final sellerGeo = await _geocodeAddress(sellerAddress);
       final buyerGeo = await _geocodeAddress(buyerAddress);
 
+      if (!mounted) return;
+
       setState(() {
         sellerLatLng = sellerGeo ?? sellerLatLng;
         buyerLatLng = buyerGeo ?? buyerLatLng;
@@ -72,7 +74,9 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       await _fetchRoute(sellerLatLng, buyerLatLng);
     } catch (e) {
       print('Error loading route: $e');
-      setState(() => isLoadingRoute = false);
+      if (mounted) {
+        setState(() => isLoadingRoute = false);
+      }
     }
   }
 
@@ -123,16 +127,22 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
           return LatLng((coord[1] as num).toDouble(), (coord[0] as num).toDouble());
         }).toList();
 
+        if (!mounted) return;
+
         setState(() {
           routePoints = points;
           isLoadingRoute = false;
         });
       } else {
-        setState(() => isLoadingRoute = false);
+        if (mounted) {
+          setState(() => isLoadingRoute = false);
+        }
       }
     } catch (e) {
       print('Error fetching route: $e');
-      setState(() => isLoadingRoute = false);
+      if (mounted) {
+        setState(() => isLoadingRoute = false);
+      }
     }
   }
 

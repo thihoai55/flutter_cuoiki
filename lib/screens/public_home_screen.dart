@@ -6,6 +6,7 @@ import '../providers/post_provider.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/app_header.dart';
 import '../widgets/app_drawer.dart';
+import '../widgets/post_image.dart';
 import 'create_post_screen.dart';
 import 'login_screen.dart';
 import 'post_detail_screen.dart';
@@ -312,10 +313,10 @@ class _PostCard extends StatelessWidget {
               borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
               child: AspectRatio(
                 aspectRatio: 4 / 3,
-                child: Image.network(
-                  post.images.isNotEmpty ? post.images.first : (post.image ?? ''),
+                child: PostImage(
+                  url: post.images.isNotEmpty ? post.images.first : (post.image ?? ''),
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xFFE5E7EB)),
+                  placeholder: const ColoredBox(color: Color(0xFFE5E7EB)),
                 ),
               ),
             ),

@@ -8,6 +8,7 @@ import '../models/transaction.dart';
 import '../models/post.dart';
 import '../widgets/main_layout.dart';
 import 'order_tracking_screen.dart';
+import '../widgets/post_image.dart';
 
 class BankTransferScreen extends StatefulWidget {
   const BankTransferScreen({
@@ -208,12 +209,12 @@ class _BankTransferScreenState extends State<BankTransferScreen> {
                         children: [
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              widget.post!.image ?? (widget.post!.images.isNotEmpty ? widget.post!.images.first : ''),
+                            child: PostImage(
+                              url: widget.post!.image ?? (widget.post!.images.isNotEmpty ? widget.post!.images.first : ''),
                               width: 60,
                               height: 60,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
+                              placeholder: Container(
                                 width: 60,
                                 height: 60,
                                 color: Colors.grey.shade200,

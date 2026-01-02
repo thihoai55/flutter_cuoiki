@@ -5,6 +5,7 @@ import '../providers/notification_provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/post_provider.dart';
 import '../providers/wallet_provider.dart';
+import 'avatar_image.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({
@@ -54,22 +55,10 @@ class AppDrawer extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    CircleAvatar(
-                      radius: 32,
-                      backgroundImage: user.avatar != null
-                          ? NetworkImage(user.avatar!)
-                          : null,
-                      backgroundColor: const Color(0xFFE0E7FF),
-                      child: user.avatar == null
-                          ? Text(
-                              user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
-                              style: const TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF2563EB),
-                              ),
-                            )
-                          : null,
+                    AvatarImage(
+                      url: user.avatar,
+                      size: 64,
+                      initials: user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
                     ),
                     const SizedBox(width: 16),
                     Expanded(

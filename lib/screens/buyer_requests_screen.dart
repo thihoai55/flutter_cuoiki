@@ -10,6 +10,8 @@ import '../widgets/main_layout.dart';
 import '../widgets/bank_account_dialog.dart';
 import 'order_tracking_screen.dart';
 import 'user_profile_screen.dart';
+import '../widgets/post_image.dart';
+import '../widgets/avatar_image.dart';
 
 class BuyerRequestsScreen extends StatefulWidget {
   const BuyerRequestsScreen({super.key});
@@ -198,10 +200,10 @@ class _RequestTile extends StatelessWidget {
               onTap: () => _openBuyerProfile(context),
               child: Row(
                 children: [
-                  CircleAvatar(
-                    radius: 22,
-                    backgroundImage: tx.buyerAvatar != null ? NetworkImage(tx.buyerAvatar!) : null,
-                    child: tx.buyerAvatar == null ? Text(tx.buyerName[0].toUpperCase()) : null,
+                  AvatarImage(
+                    url: tx.buyerAvatar,
+                    size: 44,
+                    initials: tx.buyerName[0].toUpperCase(),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -224,12 +226,12 @@ class _RequestTile extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    post!.image ?? (post!.images.isNotEmpty ? post!.images.first : ''),
+                  child: PostImage(
+                    url: post!.image ?? (post!.images.isNotEmpty ? post!.images.first : ''),
                     width: 60,
                     height: 60,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                    placeholder: Container(
                       width: 60,
                       height: 60,
                       color: Colors.grey.shade200,

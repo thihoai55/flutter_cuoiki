@@ -24,21 +24,23 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
     final unreadChat = user == null ? 0 : chatProvider.getUnreadCount(user.id);
     final unreadNotif = user == null ? 0 : context.watch<NotificationProvider>().forUser(user.id).where((n) => !n.read).length;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: AppBar(
-        backgroundColor: surfaceColor,
-        elevation: 0,
-        title: GestureDetector(
+    return SafeArea(
+      bottom: false,
+      child: Container(
+        decoration: BoxDecoration(
+          color: surfaceColor,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: AppBar(
+          backgroundColor: surfaceColor,
+          elevation: 0,
+          title: GestureDetector(
           onTap: () {
             // Navigate back to home
             Navigator.of(context).popUntil((route) => route.isFirst);
@@ -58,7 +60,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
             ],
           ),
         ),
-        actions: [
+          actions: [
           // Saved posts
           Builder(
             builder: (context) {
@@ -122,7 +124,8 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
             },
           ),
           const SizedBox(width: 12),
-        ],
+          ],
+        ),
       ),
     );
   }

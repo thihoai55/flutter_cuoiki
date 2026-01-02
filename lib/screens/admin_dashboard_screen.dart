@@ -7,6 +7,7 @@ import '../providers/post_provider.dart';
 import '../widgets/admin_drawer.dart';
 import 'admin_post_detail_screen.dart';
 import 'admin_stats_screen.dart';
+import '../widgets/post_image.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -360,7 +361,12 @@ class _PostPendingCard extends StatelessWidget {
               if (cover != null)
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.network(cover, width: 80, height: 80, fit: BoxFit.cover),
+                  child: PostImage(
+                    url: cover,
+                    width: 80,
+                    height: 80,
+                    fit: BoxFit.cover,
+                  ),
                 )
               else
                 Container(
@@ -428,7 +434,12 @@ class _PostRejectedCard extends StatelessWidget {
                   if (cover != null)
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.network(cover, width: 80, height: 80, fit: BoxFit.cover),
+                      child: PostImage(
+                        url: cover,
+                        width: 80,
+                        height: 80,
+                        fit: BoxFit.cover,
+                      ),
                     )
                   else
                     Container(
@@ -521,7 +532,12 @@ class _PostApprovedCard extends StatelessWidget {
               if (cover != null)
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.network(cover, width: 80, height: 80, fit: BoxFit.cover),
+                  child: PostImage(
+                    url: cover,
+                    width: 80,
+                    height: 80,
+                    fit: BoxFit.cover,
+                  ),
                 )
               else
                 Container(

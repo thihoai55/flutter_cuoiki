@@ -1,7 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
+import '../widgets/avatar_image.dart';
 import '../widgets/main_layout.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -13,93 +17,111 @@ class EditProfileScreen extends StatefulWidget {
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final _nameCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
   final _bioCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
   final _avatarCtrl = TextEditingController();
-  final _emailCtrl = TextEditingController();
-  final _phoneCtrl = TextEditingController();
   final _bankNameCtrl = TextEditingController();
   final _bankAccountCtrl = TextEditingController();
   final _accountHolderCtrl = TextEditingController();
 
+  final ImagePicker _picker = ImagePicker();
+
+  int _currentTab = 0;
   bool _saving = false;
   String? _error;
-  int _currentTab = 0;
+  String? _avatarPath;
 
   @override
   void initState() {
     super.initState();
-    _avatarCtrl.addListener(() => setState(() {}));
+    final user = context.read<AuthProvider>().currentUser;
+    if (user != null) {
+      _nameCtrl.text = user.name;
+      _emailCtrl.text = user.email;
+      _phoneCtrl.text = user.phone ?? '';
+      _bioCtrl.text = user.bio ?? '';
+      _addressCtrl.text = user.address ?? '';
+      _avatarCtrl.text = user.avatar ?? '';
+      _bankNameCtrl.text = user.bankName ?? '';
+      _bankAccountCtrl.text = user.bankAccount ?? '';
+      _accountHolderCtrl.text = user.accountHolder ?? '';
+    }
   }
 
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _emailCtrl.dispose();
+    _phoneCtrl.dispose();
     _bioCtrl.dispose();
     _addressCtrl.dispose();
     _avatarCtrl.dispose();
-    _emailCtrl.dispose();
-    _phoneCtrl.dispose();
     _bankNameCtrl.dispose();
     _bankAccountCtrl.dispose();
     _accountHolderCtrl.dispose();
     super.dispose();
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final auth = context.read<AuthProvider>();
-    final user = auth.currentUser;
-    if (user != null) {
-      _nameCtrl.text = user.name;
-      _bioCtrl.text = user.bio ?? '';
-      _addressCtrl.text = user.address ?? '';
-      _bankNameCtrl.text = user.bankName ?? '';
-      _bankAccountCtrl.text = user.bankAccount ?? '';
-      _accountHolderCtrl.text = user.accountHolder ?? '';
-      _avatarCtrl.text = user.avatar ?? '';
-      _emailCtrl.text = user.email;
-      _phoneCtrl.text = user.phone ?? '';
+  Future<void> _pickAvatar() async {
+    try {
+      final file = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+      if (file != null) {
+        final bytes = await file.readAsBytes();
+        final dataUri = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+        setState(() {
+          _avatarPath = dataUri;
+          _avatarCtrl.text = '';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Không chọn được ảnh: $e')),
+        );
+      }
     }
   }
 
   Future<void> _save() async {
-    setState(() => _error = null);
     final auth = context.read<AuthProvider>();
     final user = auth.currentUser;
+    if (user == null) return;
 
-    if (user == null) {
-      setState(() => _error = 'Bạn cần đăng nhập lại.');
-      return;
-    }
-    if (_nameCtrl.text.trim().isEmpty) {
-      setState(() => _error = 'Tên không được để trống.');
-      return;
-    }
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
 
-    setState(() => _saving = true);
     try {
-      final updated = await auth.updateProfile(
+      final avatarValue = (_avatarPath != null && _avatarPath!.isNotEmpty)
+          ? _avatarPath
+          : (_avatarCtrl.text.trim().isNotEmpty ? _avatarCtrl.text.trim() : null);
+
+      await auth.updateProfile(
         id: user.id,
-        name: _nameCtrl.text.trim(),
-        bio: _bioCtrl.text.trim().isEmpty ? null : _bioCtrl.text.trim(),
-        bankName: _bankNameCtrl.text.trim().isEmpty ? null : _bankNameCtrl.text.trim(),
-        bankAccount: _bankAccountCtrl.text.trim().isEmpty ? null : _bankAccountCtrl.text.trim(),
-        accountHolder: _accountHolderCtrl.text.trim().isEmpty ? null : _accountHolderCtrl.text.trim(),
-        address: _addressCtrl.text.trim().isEmpty ? null : _addressCtrl.text.trim(),
-        avatar: _avatarCtrl.text.trim().isEmpty ? null : _avatarCtrl.text.trim(),
-        phone: _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
+        name: _nameCtrl.text.trim().isEmpty ? user.name : _nameCtrl.text.trim(),
+        bio: _bioCtrl.text.trim(),
+        address: _addressCtrl.text.trim(),
+        avatar: avatarValue,
+        phone: _phoneCtrl.text.trim(),
+        bankName: _bankNameCtrl.text.trim(),
+        bankAccount: _bankAccountCtrl.text.trim(),
+        accountHolder: _accountHolderCtrl.text.trim(),
       );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã lưu thông tin cá nhân.')),
-      );
-      Navigator.of(context).pop(updated);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã lưu thông tin')),
+        );
+      }
     } catch (e) {
-      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      setState(() => _error = 'Không thể lưu: $e');
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) {
+        setState(() => _saving = false);
+      }
     }
   }
 
@@ -124,7 +146,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Error message
             if (_error != null)
               Container(
                 padding: const EdgeInsets.all(12),
@@ -140,18 +161,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
             if (_error != null) const SizedBox(height: 12),
 
-            // Profile preview card
             _ProfilePreview(
               name: _nameCtrl.text.isEmpty ? user.name : _nameCtrl.text,
               email: user.email,
               role: user.role,
-              avatar: _avatarCtrl.text.trim().isNotEmpty
-                  ? _avatarCtrl.text.trim()
-                  : user.avatar,
+              avatar: (_avatarPath != null && _avatarPath!.isNotEmpty)
+                  ? _avatarPath
+                  : (_avatarCtrl.text.trim().isNotEmpty ? _avatarCtrl.text.trim() : user.avatar),
             ),
             const SizedBox(height: 20),
 
-            // Tab buttons
             Container(
               decoration: BoxDecoration(
                 color: Colors.grey.shade100,
@@ -169,11 +188,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
             const SizedBox(height: 20),
 
-            // Content based on selected tab
             _buildTabContent(_currentTab),
             const SizedBox(height: 20),
 
-            // Save button
             ElevatedButton.icon(
               onPressed: _saving ? null : _save,
               icon: const Icon(Icons.save_outlined),
@@ -248,11 +265,57 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             maxLines: 3,
           ),
           const SizedBox(height: 12),
-          _buildInput(
-            label: 'Ảnh đại diện (link)',
-            controller: _avatarCtrl,
-            icon: Icons.image_outlined,
-            hint: 'https://...',
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Ảnh đại diện', style: TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    AvatarImage(
+                      url: (_avatarPath != null && _avatarPath!.isNotEmpty)
+                          ? _avatarPath
+                          : (_avatarCtrl.text.trim().isNotEmpty ? _avatarCtrl.text.trim() : null),
+                      size: 72,
+                      initials: (_nameCtrl.text.isNotEmpty ? _nameCtrl.text[0].toUpperCase() : 'U'),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: _pickAvatar,
+                          icon: const Icon(Icons.photo_library_outlined),
+                          label: const Text('Chọn ảnh từ máy'),
+                        ),
+                        const SizedBox(height: 6),
+                        SizedBox(
+                          width: 260,
+                          child: TextField(
+                            controller: _avatarCtrl,
+                            decoration: const InputDecoration(
+                              isDense: true,
+                              labelText: 'Hoặc dán URL ảnh (tuỳ chọn)',
+                              prefixIcon: Icon(Icons.link_outlined),
+                            ),
+                          ),
+                        ),
+                        if (_avatarPath != null && _avatarPath!.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              'Đang dùng ảnh trong máy',
+                              style: TextStyle(color: Colors.green[700], fontSize: 12),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       );
@@ -351,49 +414,10 @@ class _ProfilePreview extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            // Custom avatar with Image.network for better error handling
-            Container(
-              width: 76,
-              height: 76,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.blue.shade100,
-                border: Border.all(color: Colors.blue.shade200, width: 2),
-              ),
-              clipBehavior: Clip.hardEdge,
-              child: (avatar != null && avatar!.isNotEmpty)
-                  ? Image.network(
-                      avatar!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Center(
-                          child: Text(
-                            initials,
-                            style: const TextStyle(
-                              color: Colors.blue,
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        );
-                      },
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return const Center(
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        );
-                      },
-                    )
-                  : Center(
-                      child: Text(
-                        initials,
-                        style: const TextStyle(
-                          color: Colors.blue,
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
+            AvatarImage(
+              url: avatar,
+              size: 76,
+              initials: initials,
             ),
             const SizedBox(width: 14),
             Expanded(

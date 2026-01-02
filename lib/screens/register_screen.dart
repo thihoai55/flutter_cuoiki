@@ -63,8 +63,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: SingleChildScrollView(
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),
@@ -183,6 +184,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         ),
       ),
+    ),
     );
   }
 

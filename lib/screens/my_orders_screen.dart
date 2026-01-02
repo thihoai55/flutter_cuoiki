@@ -6,6 +6,7 @@ import '../models/transaction.dart';
 import '../models/post.dart';
 import '../widgets/main_layout.dart';
 import 'order_tracking_screen.dart';
+import '../widgets/post_image.dart';
 
 class MyOrdersScreen extends StatelessWidget {
   const MyOrdersScreen({super.key});
@@ -131,12 +132,12 @@ class _OrderCard extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    post.image ?? (post.images.isNotEmpty ? post.images.first : ''),
+                  child: PostImage(
+                    url: post.image ?? (post.images.isNotEmpty ? post.images.first : ''),
                     width: 70,
                     height: 70,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                    placeholder: Container(
                       width: 70,
                       height: 70,
                       color: Colors.grey.shade200,

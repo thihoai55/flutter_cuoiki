@@ -10,6 +10,8 @@ import 'edit_post_screen.dart';
 import 'followers_following_screen.dart';
 import 'view_ratings_screen.dart';
 import '../widgets/main_layout.dart';
+import '../widgets/avatar_image.dart';
+import '../widgets/post_image.dart';
 
 class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({
@@ -121,18 +123,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               ),
               child: Column(
                 children: [
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundImage: widget.user.avatar != null
-                        ? NetworkImage(widget.user.avatar!)
-                        : null,
-                    child: widget.user.avatar == null
-                        ? Text(
-                            widget.user.name[0].toUpperCase(),
-                            style: const TextStyle(fontSize: 32),
-                          )
-                        : null,
-                  ),
+                    AvatarImage(
+                      url: widget.user.avatar,
+                      size: 80,
+                      initials: widget.user.name[0].toUpperCase(),
+                    ),
                   const SizedBox(height: 16),
                   Text(
                     widget.user.name,
@@ -398,10 +393,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   child: AspectRatio(
                     aspectRatio: 1,
                     child: post.images.isNotEmpty
-                        ? Image.network(
-                            post.images.first,
+                        ? PostImage(
+                            url: post.images.first,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
+                            placeholder: Container(
                               color: Colors.grey[200],
                               child: const Icon(Icons.image, size: 40, color: Colors.grey),
                             ),

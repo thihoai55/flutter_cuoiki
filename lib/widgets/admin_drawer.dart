@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/post_provider.dart';
 import '../providers/auth_provider.dart';
 import '../screens/login_screen.dart';
+import 'avatar_image.dart';
 
 class AdminDrawer extends StatelessWidget {
   final int currentTab;
@@ -39,21 +40,10 @@ class AdminDrawer extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 children: [
-                  CircleAvatar(
-                    radius: 22,
-                    backgroundColor: Colors.grey[200],
-                    backgroundImage:
-                        user?.avatar != null ? NetworkImage(user!.avatar!) : null,
-                    child: user?.avatar == null
-                        ? Text(
-                            (user?.name.isNotEmpty == true ? user!.name[0] : 'A').toUpperCase(),
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.black,
-                            ),
-                          )
-                        : null,
+                  AvatarImage(
+                    url: user?.avatar,
+                    size: 44,
+                    initials: (user?.name.isNotEmpty == true ? user!.name[0] : 'A').toUpperCase(),
                   ),
                   const SizedBox(width: 12),
                   Expanded(

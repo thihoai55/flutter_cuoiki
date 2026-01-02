@@ -13,6 +13,8 @@ import 'edit_post_screen.dart';
 import '../widgets/purchase_confirm_dialog.dart';
 import '../providers/notification_provider.dart';
 import '../widgets/main_layout.dart';
+import '../widgets/post_image.dart';
+import '../widgets/avatar_image.dart';
 
 class PostDetailScreen extends StatefulWidget {
   const PostDetailScreen({super.key, required this.postId});
@@ -289,10 +291,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               setState(() => _currentImageIndex = index);
             },
             itemBuilder: (context, index) {
-              return Image.network(
-                images[index],
+              return PostImage(
+                url: images[index],
                 fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => Container(
+                width: double.infinity,
+                height: double.infinity,
+                placeholder: Container(
                   color: Colors.grey[300],
                   child: const Icon(Icons.broken_image, size: 80, color: Colors.grey),
                 ),
@@ -444,22 +448,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 );
               }
             },
-            child: CircleAvatar(
-              radius: 24,
-              backgroundColor: const Color(0xFF2563EB),
-              backgroundImage: post.authorAvatar != null
-                  ? NetworkImage(post.authorAvatar!)
-                  : null,
-              child: post.authorAvatar == null
-                  ? Text(
-                      post.authorName[0].toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                      ),
-                    )
-                  : null,
+            child: AvatarImage(
+              url: post.authorAvatar,
+              size: 48,
+              initials: post.authorName[0].toUpperCase(),
             ),
           ),
           const SizedBox(width: 12),
@@ -687,18 +679,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 children: [
-                  CircleAvatar(
-                    radius: 18,
-                    backgroundColor: const Color(0xFF2563EB),
-                    backgroundImage: currentUser.avatar != null
-                        ? NetworkImage(currentUser.avatar!)
-                        : null,
-                    child: currentUser.avatar == null
-                        ? Text(
-                            currentUser.name[0].toUpperCase(),
-                            style: const TextStyle(color: Colors.white, fontSize: 14),
-                          )
-                        : null,
+                  AvatarImage(
+                    url: currentUser.avatar,
+                    size: 36,
+                    initials: currentUser.name[0].toUpperCase(),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -750,21 +734,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            CircleAvatar(
-                              radius: 16,
-                              backgroundColor: const Color(0xFF2563EB),
-                              backgroundImage: comment.authorAvatar != null
-                                  ? NetworkImage(comment.authorAvatar!)
-                                  : null,
-                              child: comment.authorAvatar == null
-                                  ? Text(
-                                      comment.authorName[0].toUpperCase(),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                      ),
-                                    )
-                                  : null,
+                            AvatarImage(
+                              url: comment.authorAvatar,
+                              size: 32,
+                              initials: comment.authorName[0].toUpperCase(),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -873,12 +846,12 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                           borderRadius: const BorderRadius.vertical(
                             top: Radius.circular(12),
                           ),
-                          child: Image.network(
-                            imageUrl,
+                          child: PostImage(
+                            url: imageUrl,
                             height: 160,
                             width: 160,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
+                            placeholder: Container(
                               height: 160,
                               color: Colors.grey[200],
                               child: const Icon(Icons.image, size: 40, color: Colors.grey),

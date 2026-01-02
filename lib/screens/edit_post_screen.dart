@@ -1,7 +1,9 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
+import 'package:provider/provider.dart';
 
 import '../models/post.dart';
 import '../providers/post_provider.dart';
@@ -41,7 +43,7 @@ class _EditPostScreenState extends State<EditPostScreen> {
   late String _category;
   late String _condition;
   bool _submitting = false;
-  late List<String> _imageUrls;
+  late List<_PickedImage> _images;
 
   @override
   void initState() {
@@ -56,7 +58,9 @@ class _EditPostScreenState extends State<EditPostScreen> {
     _type = widget.post.type;
     _category = widget.post.category;
     _condition = widget.post.condition ?? 'Mới';
-    _imageUrls = List<String>.from(widget.post.images);
+    _images = widget.post.images
+      .map((src) => _PickedImage(source: src, bytes: _decodeDataUri(src)))
+      .toList();
   }
 
   @override
@@ -74,9 +78,12 @@ class _EditPostScreenState extends State<EditPostScreen> {
     try {
       final List<XFile> images = await picker.pickMultiImage();
       if (images.isNotEmpty) {
-        setState(() {
-          _imageUrls.addAll(images.map((e) => e.path));
-        });
+        final picked = await Future.wait(images.map((file) async {
+          final bytes = await file.readAsBytes();
+          return _PickedImage(source: file.path, bytes: bytes);
+        }));
+
+        setState(() => _images.addAll(picked));
       }
     } catch (e) {
       if (mounted) {
@@ -106,7 +113,7 @@ class _EditPostScreenState extends State<EditPostScreen> {
       condition: _type == 'sell' ? _condition : null,
       location: _locationCtrl.text.trim().isEmpty ? null : _locationCtrl.text.trim(),
       contact: _contactCtrl.text.trim().isEmpty ? null : _contactCtrl.text.trim(),
-      images: _imageUrls,
+      images: _images.map((e) => e.asPersistedString).toList(),
       status: widget.post.status,
       timestamp: widget.post.timestamp,
       packageType: widget.post.packageType,
@@ -457,7 +464,7 @@ class _EditPostScreenState extends State<EditPostScreen> {
                   ),
                 ),
               ),
-              if (_imageUrls.isNotEmpty)
+              if (_images.isNotEmpty)
                 Container(
                   padding: const EdgeInsets.all(12),
                   child: GridView.builder(
@@ -468,10 +475,11 @@ class _EditPostScreenState extends State<EditPostScreen> {
                       mainAxisSpacing: 8,
                       crossAxisSpacing: 8,
                     ),
-                    itemCount: _imageUrls.length,
+                    itemCount: _images.length,
                     itemBuilder: (context, index) {
-                      final imagePath = _imageUrls[index];
-                      final isNetworkImage = imagePath.startsWith('http');
+                      final image = _images[index];
+                      final isNetworkImage = image.isNetwork;
+                      final dataBytes = _decodeDataUri(image.source) ?? image.bytes;
                       
                       return Stack(
                         children: [
@@ -484,28 +492,28 @@ class _EditPostScreenState extends State<EditPostScreen> {
                               borderRadius: BorderRadius.circular(8),
                               child: isNetworkImage
                                   ? Image.network(
-                                      imagePath,
+                                      image.source,
                                       fit: BoxFit.cover,
                                       width: double.infinity,
                                       height: double.infinity,
-                                      errorBuilder: (_, __, ___) => Container(
-                                        color: Colors.grey[200],
-                                        child: const Icon(Icons.error, color: Colors.red),
-                                      ),
+                                      errorBuilder: (_, __, ___) => _imageErrorPlaceholder(),
                                     )
-                                  : Image.file(
-                                      File(imagePath),
-                                      fit: BoxFit.cover,
-                                      width: double.infinity,
-                                      height: double.infinity,
-                                    ),
+                                  : (dataBytes != null
+                                      ? Image.memory(
+                                          dataBytes,
+                                          fit: BoxFit.cover,
+                                          width: double.infinity,
+                                          height: double.infinity,
+                                          errorBuilder: (_, __, ___) => _imageErrorPlaceholder(),
+                                        )
+                                      : _imageErrorPlaceholder()),
                             ),
                           ),
                           Positioned(
                             top: 0,
                             right: 0,
                             child: GestureDetector(
-                              onTap: () => setState(() => _imageUrls.removeAt(index)),
+                              onTap: () => setState(() => _images.removeAt(index)),
                               child: Container(
                                 decoration: const BoxDecoration(
                                   color: Colors.red,
@@ -526,5 +534,40 @@ class _EditPostScreenState extends State<EditPostScreen> {
         ),
       ],
     );
+  }
+}
+
+Widget _imageErrorPlaceholder() {
+  return Container(
+    color: Colors.grey[200],
+    alignment: Alignment.center,
+    child: const Icon(Icons.error, color: Colors.red),
+  );
+}
+
+Uint8List? _decodeDataUri(String data) {
+  if (!data.startsWith('data:image')) return null;
+  final commaIndex = data.indexOf(',');
+  if (commaIndex == -1) return null;
+  final payload = data.substring(commaIndex + 1);
+  try {
+    return base64Decode(payload);
+  } catch (_) {
+    return null;
+  }
+}
+
+class _PickedImage {
+  _PickedImage({required this.source, this.bytes});
+
+  final String source;
+  final Uint8List? bytes;
+
+  bool get isNetwork => source.startsWith('http');
+
+  String get asPersistedString {
+    if (isNetwork || source.startsWith('data:image')) return source;
+    if (bytes != null) return 'data:image/jpeg;base64,${base64Encode(bytes!)}';
+    return source;
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/post.dart';
 import '../providers/post_provider.dart';
+import '../widgets/post_image.dart';
 
 class AdminPostDetailScreen extends StatefulWidget {
   final PostItem post;
@@ -37,12 +38,12 @@ class _AdminPostDetailScreenState extends State<AdminPostDetailScreen> {
           children: [
             // Hình ảnh chính
             if (mainImage != null)
-              Image.network(
-                mainImage,
+              PostImage(
+                url: mainImage,
                 width: double.infinity,
                 height: 300,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+                placeholder: Container(
                   width: double.infinity,
                   height: 300,
                   color: Colors.grey[200],
@@ -80,12 +81,12 @@ class _AdminPostDetailScreenState extends State<AdminPostDetailScreen> {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(10),
-                          child: Image.network(
-                            url,
+                          child: PostImage(
+                            url: url,
                             width: 92,
                             height: 92,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
+                            placeholder: Container(
                               width: 92,
                               height: 92,
                               color: Colors.grey[200],

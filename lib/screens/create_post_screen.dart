@@ -1,7 +1,9 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
+import 'package:provider/provider.dart';
 
 import '../models/post.dart';
 import '../providers/auth_provider.dart';
@@ -53,6 +55,41 @@ class CreatePostScreen extends StatefulWidget {
   State<CreatePostScreen> createState() => _CreatePostScreenState();
 }
 
+Widget _imageErrorPlaceholder() {
+  return Container(
+    color: Colors.grey[200],
+    alignment: Alignment.center,
+    child: const Icon(Icons.error, color: Colors.red),
+  );
+}
+
+Uint8List? _decodeDataUri(String data) {
+  if (!data.startsWith('data:image')) return null;
+  final commaIndex = data.indexOf(',');
+  if (commaIndex == -1) return null;
+  final payload = data.substring(commaIndex + 1);
+  try {
+    return base64Decode(payload);
+  } catch (_) {
+    return null;
+  }
+}
+
+class _PickedImage {
+  _PickedImage({required this.source, this.bytes});
+
+  final String source;
+  final Uint8List? bytes;
+
+  bool get isNetwork => source.startsWith('http');
+
+  String get asPersistedString {
+    if (isNetwork || source.startsWith('data:image')) return source;
+    if (bytes != null) return 'data:image/jpeg;base64,${base64Encode(bytes!)}';
+    return source;
+  }
+}
+
 class _CreatePostScreenState extends State<CreatePostScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleCtrl = TextEditingController();
@@ -67,7 +104,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   String _selectedPackage = 'basic';
   String _paymentMethod = 'wallet'; // wallet, vnpay, momo
   bool _submitting = false;
-  final List<String> _imageUrls = [];
+  final List<_PickedImage> _images = [];
 
   @override
   void dispose() {
@@ -89,9 +126,12 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     try {
       final List<XFile> images = await picker.pickMultiImage();
       if (images.isNotEmpty) {
-        setState(() {
-          _imageUrls.addAll(images.map((e) => e.path));
-        });
+        final picked = await Future.wait(images.map((file) async {
+          final bytes = await file.readAsBytes();
+          return _PickedImage(source: file.path, bytes: bytes);
+        }));
+
+        setState(() => _images.addAll(picked));
       }
     } catch (e) {
       if (mounted) {
@@ -486,7 +526,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       condition: _type == 'sell' ? _condition : null,
       location: _locationCtrl.text.trim().isEmpty ? null : _locationCtrl.text.trim(),
       contact: _contactCtrl.text.trim().isEmpty ? null : _contactCtrl.text.trim(),
-      images: _imageUrls,
+      images: _images.map((e) => e.asPersistedString).toList(),
       status: 'pending',
       timestamp: DateTime.now(),
       packageType: _type == 'sell' ? _selectedPackage : null,
@@ -529,7 +569,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       condition: _type == 'sell' ? _condition : null,
       location: _locationCtrl.text.trim().isEmpty ? null : _locationCtrl.text.trim(),
       contact: _contactCtrl.text.trim().isEmpty ? null : _contactCtrl.text.trim(),
-      images: _imageUrls,
+      images: _images.map((e) => e.asPersistedString).toList(),
       status: 'pending',
       timestamp: DateTime.now(),
       packageType: _type == 'sell' ? _selectedPackage : null,
@@ -875,7 +915,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   ),
                 ),
               ),
-              if (_imageUrls.isNotEmpty)
+              if (_images.isNotEmpty)
                 Container(
                   padding: const EdgeInsets.all(12),
                   child: GridView.builder(
@@ -886,9 +926,32 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       mainAxisSpacing: 8,
                       crossAxisSpacing: 8,
                     ),
-                    itemCount: _imageUrls.length,
+                    itemCount: _images.length,
                     itemBuilder: (context, index) {
-                      final imagePath = _imageUrls[index];
+                      final image = _images[index];
+                      final dataBytes = _decodeDataUri(image.source) ?? image.bytes;
+                      Widget content;
+
+                      if (image.isNetwork) {
+                        content = Image.network(
+                          image.source,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                          errorBuilder: (_, __, ___) => _imageErrorPlaceholder(),
+                        );
+                      } else if (dataBytes != null) {
+                        content = Image.memory(
+                          dataBytes,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                          errorBuilder: (_, __, ___) => _imageErrorPlaceholder(),
+                        );
+                      } else {
+                        content = _imageErrorPlaceholder();
+                      }
+
                       return Stack(
                         children: [
                           Container(
@@ -898,19 +961,14 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                             ),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(8),
-                              child: Image.file(
-                                File(imagePath),
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                height: double.infinity,
-                              ),
+                              child: content,
                             ),
                           ),
                           Positioned(
                             top: 0,
                             right: 0,
                             child: GestureDetector(
-                              onTap: () => setState(() => _imageUrls.removeAt(index)),
+                              onTap: () => setState(() => _images.removeAt(index)),
                               child: Container(
                                 decoration: const BoxDecoration(
                                   color: Colors.red,
