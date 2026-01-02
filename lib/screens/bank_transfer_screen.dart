@@ -9,6 +9,7 @@ import '../models/post.dart';
 import '../widgets/main_layout.dart';
 import 'order_tracking_screen.dart';
 import '../widgets/post_image.dart';
+import 'mock_gateway_screen.dart';
 
 class BankTransferScreen extends StatefulWidget {
   const BankTransferScreen({
@@ -80,21 +81,39 @@ class _BankTransferScreenState extends State<BankTransferScreen> {
           'Nhận thanh toán từ ${currentUser.name}',
         );
       } else {
-        // Simulate external payment (Momo/VNPay)
-        // In real app, this would redirect to payment gateway
-        await Future.delayed(const Duration(seconds: 1));
-        
-          // For external payment, still log buyer transaction and add to seller's wallet
+        final orderId = 'OD${widget.transaction.id}-${DateTime.now().millisecondsSinceEpoch}';
+        final paid = await Navigator.of(context).push<bool>(
+              MaterialPageRoute(
+                builder: (_) => MockGatewayScreen(
+                  amount: amount,
+                  method: _paymentMethod,
+                  description: note,
+                  orderId: orderId,
+                ),
+              ),
+            ) ??
+            false;
+
+        if (!mounted) return;
+        if (!paid) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Thanh toán chưa hoàn tất.')),
+          );
+          setState(() => _processing = false);
+          return;
+        }
+
+        // Log buyer transaction and add to seller's wallet after user xác nhận đã thanh toán
         final walletProvider = context.read<WalletProvider>();
         final auth = context.read<AuthProvider>();
         final currentUser = auth.currentUser;
         if (currentUser != null) {
-            walletProvider.recordExternalPayment(
-              amount,
-              description: note,
-              userId: currentUser.id,
-              paymentMethod: _paymentMethod.toUpperCase(),
-            );
+          walletProvider.recordExternalPayment(
+            amount,
+            description: note,
+            userId: currentUser.id,
+            paymentMethod: _paymentMethod.toUpperCase(),
+          );
           walletProvider.addToBalance(
             widget.transaction.sellerId,
             amount,

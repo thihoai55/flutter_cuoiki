@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/wallet_provider.dart';
 import '../providers/auth_provider.dart';
+import '../screens/mock_gateway_screen.dart';
 
 class PaymentModal extends StatefulWidget {
   const PaymentModal({
@@ -381,25 +382,50 @@ class _PaymentModalState extends State<PaymentModal> {
       return;
     }
     setState(() => _processing = true);
-    await Future.delayed(const Duration(seconds: 2));
+    final auth = context.read<AuthProvider>();
+    final user = auth.currentUser;
+    if (user == null) {
+      setState(() => _processing = false);
+      return;
+    }
 
     if (_selectedMethod == 'balance') {
-      final auth = context.read<AuthProvider>();
-      final user = auth.currentUser;
-      if (user == null) return;
-      
-      wallet.pay(widget.packagePrice, description: 'Thanh toán gói ${widget.packageType}', userId: user.id);
+      wallet.pay(
+        widget.packagePrice,
+        description: 'Thanh toán gói ${widget.packageType}',
+        userId: user.id,
+      );
     } else {
-      final auth = context.read<AuthProvider>();
-      final user = auth.currentUser;
-      if (user != null) {
-        wallet.recordExternalPayment(
-          widget.packagePrice,
-          description: 'Thanh toán gói ${widget.packageType}',
-          userId: user.id,
-          paymentMethod: _selectedMethod.toUpperCase(),
+      final orderId = 'PKG${DateTime.now().millisecondsSinceEpoch}';
+      final desc = 'Thanh toán gói ${widget.packageType}${widget.postTitle != null ? ' - ${widget.postTitle}' : ''}';
+
+      final paid = await Navigator.of(context).push<bool>(
+            MaterialPageRoute(
+              builder: (_) => MockGatewayScreen(
+                amount: widget.packagePrice,
+                method: _selectedMethod,
+                description: desc,
+                orderId: orderId,
+              ),
+            ),
+          ) ??
+          false;
+
+      if (!mounted) return;
+      if (!paid) {
+        setState(() => _processing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Thanh toán chưa hoàn tất.')),
         );
+        return;
       }
+
+      wallet.recordExternalPayment(
+        widget.packagePrice,
+        description: desc,
+        userId: user.id,
+        paymentMethod: _selectedMethod.toUpperCase(),
+      );
     }
 
     setState(() {

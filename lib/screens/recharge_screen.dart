@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/wallet_provider.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/main_layout.dart';
+import 'mock_gateway_screen.dart';
 
 class RechargeScreen extends StatefulWidget {
   const RechargeScreen({super.key});
@@ -260,15 +261,40 @@ class _RechargeScreenState extends State<RechargeScreen> {
       return;
     }
     setState(() => _processing = true);
-    await Future.delayed(const Duration(seconds: 2));
-
     final auth = context.read<AuthProvider>();
     final currentUser = auth.currentUser;
-    if (currentUser == null) return;
-    
+    if (currentUser == null) {
+      setState(() => _processing = false);
+      return;
+    }
+
+    final orderId = 'RC${DateTime.now().millisecondsSinceEpoch}';
+    final description = 'Nạp ví qua ${_method.toUpperCase()}';
+
+    final paid = await Navigator.of(context).push<bool>(
+          MaterialPageRoute(
+            builder: (_) => MockGatewayScreen(
+              amount: total,
+              method: _method,
+              description: description,
+              orderId: orderId,
+            ),
+          ),
+        ) ??
+        false;
+
+    if (!mounted) return;
+    setState(() => _processing = false);
+
+    if (!paid) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Thanh toán chưa hoàn tất.')),
+      );
+      return;
+    }
+
     final ok = wallet.recharge(total, paymentMethod: _method.toUpperCase(), userId: currentUser.id);
     setState(() {
-      _processing = false;
       _success = ok;
       _lastAmount = ok ? total : 0;
       if (ok) {

@@ -12,6 +12,7 @@ import '../providers/wallet_provider.dart';
 import '../providers/notification_provider.dart';
 import '../providers/follow_provider.dart';
 import 'user_profile_screen.dart';
+import 'mock_gateway_screen.dart';
 
 const _categories = <String>[
   'Sách & Tài liệu',
@@ -456,6 +457,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     final user = auth.currentUser;
     
     if (user == null) return;
+    if (price <= 0) {
+      _createPostAndNavigate();
+      return;
+    }
     
     if (_paymentMethod == 'wallet') {
       // Thanh toán bằng ví
@@ -487,12 +492,32 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       }
     } else {
       // Thanh toán qua cổng thanh toán khác (VNPay, Momo)
-      // Giả lập thanh toán thành công
-      await Future.delayed(const Duration(seconds: 1));
-      // Ghi nhận giao dịch external để có lịch sử
+      final orderId = 'POST${DateTime.now().millisecondsSinceEpoch}';
+      final desc = 'Thanh toán gói ${_packageConfig[_selectedPackage]?['name']} - ${_titleCtrl.text}';
+
+      final paid = await Navigator.of(context).push<bool>(
+            MaterialPageRoute(
+              builder: (_) => MockGatewayScreen(
+                amount: price,
+                method: _paymentMethod,
+                description: desc,
+                orderId: orderId,
+              ),
+            ),
+          ) ??
+          false;
+
+      if (!mounted) return;
+      if (!paid) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Thanh toán chưa hoàn tất.')),
+        );
+        return;
+      }
+
       walletProvider.recordExternalPayment(
         price,
-        description: 'Thanh toán gói ${_packageConfig[_selectedPackage]?['name']} - ${_titleCtrl.text}',
+        description: desc,
         userId: user.id,
         paymentMethod: _paymentMethod.toUpperCase(),
       );
