@@ -83,24 +83,36 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   Future<LatLng?> _geocodeAddress(String address) async {
     try {
       final encoded = Uri.encodeComponent(address);
-      final url = 'https://nominatim.openstreetmap.org/search?q=$encoded&format=json&limit=1&addressdetails=0';
+      final url = 'https://nominatim.openstreetmap.org/search?q=$encoded&format=json&limit=1&addressdetails=0&countrycodes=vn';
       final response = await http.get(
         Uri.parse(url),
         headers: {
-          'User-Agent': 'flutter-app-order-tracking/1.0',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         },
       ).timeout(
-        const Duration(seconds: 10),
+        const Duration(seconds: 25),
         onTimeout: () => http.Response('timeout', 500),
       );
 
-      if (response.statusCode != 200) return null;
+      if (response.statusCode != 200) {
+        print('Geocode error: statusCode=${response.statusCode}');
+        return null;
+      }
+      
       final body = jsonDecode(response.body) as List<dynamic>;
-      if (body.isEmpty) return null;
-      final item = body.first;
+      if (body.isEmpty) {
+        print('No geocode results for: $address');
+        return null;
+      }
+      
+      final item = body.first as Map<String, dynamic>;
       final lat = double.tryParse(item['lat'] as String? ?? '') ?? 0;
       final lon = double.tryParse(item['lon'] as String? ?? '') ?? 0;
-      if (lat == 0 && lon == 0) return null;
+      if (lat == 0 && lon == 0) {
+        print('Invalid coordinates for: $address');
+        return null;
+      }
+      print('Geocoded "$address" to LatLng($lat, $lon)');
       return LatLng(lat, lon);
     } catch (e) {
       print('Error geocoding "$address": $e');
@@ -113,27 +125,61 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       final url =
           'https://router.project-osrm.org/route/v1/driving/${seller.longitude},${seller.latitude};${buyer.longitude},${buyer.latitude}?overview=full&geometries=geojson';
 
-      final response = await http.get(Uri.parse(url)).timeout(
-        const Duration(seconds: 10),
-        onTimeout: () => http.Response('timeout', 500),
+      print('Fetching route: $url');
+      
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        },
+      ).timeout(
+        const Duration(seconds: 25),
+        onTimeout: () => http.Response('{"code":"timeout"}', 500),
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final geometry = data['routes'][0]['geometry'];
-        final coordinates = geometry['coordinates'] as List;
+        try {
+          final data = jsonDecode(response.body) as Map<String, dynamic>;
+          
+          if (data['code'] != 'Ok' || (data['routes'] as List?)?.isEmpty != false) {
+            print('OSRM returned code: ${data['code']}');
+            if (mounted) {
+              setState(() => isLoadingRoute = false);
+            }
+            return;
+          }
 
-        final points = coordinates.map<LatLng>((coord) {
-          return LatLng((coord[1] as num).toDouble(), (coord[0] as num).toDouble());
-        }).toList();
+          final geometry = data['routes'][0]['geometry'] as Map<String, dynamic>;
+          final coordinates = geometry['coordinates'] as List;
 
-        if (!mounted) return;
+          if (coordinates.isEmpty) {
+            print('No coordinates in route');
+            if (mounted) {
+              setState(() => isLoadingRoute = false);
+            }
+            return;
+          }
 
-        setState(() {
-          routePoints = points;
-          isLoadingRoute = false;
-        });
+          final points = coordinates.map<LatLng>((coord) {
+            return LatLng((coord[1] as num).toDouble(), (coord[0] as num).toDouble());
+          }).toList();
+
+          print('Loaded ${points.length} route points');
+
+          if (!mounted) return;
+
+          setState(() {
+            routePoints = points;
+            isLoadingRoute = false;
+          });
+        } catch (parseError) {
+          print('Error parsing OSRM response: $parseError');
+          if (mounted) {
+            setState(() => isLoadingRoute = false);
+          }
+        }
       } else {
+        print('OSRM error: statusCode=${response.statusCode}, body=${response.body.substring(0, 100)}');
         if (mounted) {
           setState(() => isLoadingRoute = false);
         }

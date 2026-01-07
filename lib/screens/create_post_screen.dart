@@ -492,29 +492,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       }
     } else {
       // Thanh toán qua cổng thanh toán khác (VNPay, Momo)
-      final orderId = 'POST${DateTime.now().millisecondsSinceEpoch}';
       final desc = 'Thanh toán gói ${_packageConfig[_selectedPackage]?['name']} - ${_titleCtrl.text}';
 
-      final paid = await Navigator.of(context).push<bool>(
-            MaterialPageRoute(
-              builder: (_) => MockGatewayScreen(
-                amount: price,
-                method: _paymentMethod,
-                description: desc,
-                orderId: orderId,
-              ),
-            ),
-          ) ??
-          false;
-
-      if (!mounted) return;
-      if (!paid) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Thanh toán chưa hoàn tất.')),
-        );
-        return;
-      }
-
+      // Ghi nhận thanh toán ngay lập tức
       walletProvider.recordExternalPayment(
         price,
         description: desc,

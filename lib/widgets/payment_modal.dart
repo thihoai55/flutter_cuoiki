@@ -396,30 +396,10 @@ class _PaymentModalState extends State<PaymentModal> {
         userId: user.id,
       );
     } else {
-      final orderId = 'PKG${DateTime.now().millisecondsSinceEpoch}';
+      // Thanh toán qua VNPay/Momo/QR - xác nhận ngay lập tức
       final desc = 'Thanh toán gói ${widget.packageType}${widget.postTitle != null ? ' - ${widget.postTitle}' : ''}';
 
-      final paid = await Navigator.of(context).push<bool>(
-            MaterialPageRoute(
-              builder: (_) => MockGatewayScreen(
-                amount: widget.packagePrice,
-                method: _selectedMethod,
-                description: desc,
-                orderId: orderId,
-              ),
-            ),
-          ) ??
-          false;
-
-      if (!mounted) return;
-      if (!paid) {
-        setState(() => _processing = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Thanh toán chưa hoàn tất.')),
-        );
-        return;
-      }
-
+      // Ghi nhận thanh toán ngay
       wallet.recordExternalPayment(
         widget.packagePrice,
         description: desc,

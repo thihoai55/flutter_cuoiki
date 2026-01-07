@@ -40,26 +40,31 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
         child: AppBar(
           backgroundColor: surfaceColor,
           elevation: 0,
-          title: GestureDetector(
-          onTap: () {
-            // Navigate back to home
-            Navigator.of(context).popUntil((route) => route.isFirst);
-          },
-          child: Row(
-            children: [
-              Icon(Icons.store, color: theme.colorScheme.primary, size: 24),
-              const SizedBox(width: 8),
-              Text(
-                'Sàn Trao Đổi SV',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                  color: theme.colorScheme.primary,
-                ),
+          title: Flexible(
+            child: GestureDetector(
+              onTap: () {
+                // Navigate back to home
+                Navigator.of(context).popUntil((route) => route.isFirst);
+              },
+              child: Row(
+                children: [
+                  Icon(Icons.store, color: theme.colorScheme.primary, size: 24),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      'Sàn Trao Đổi SV',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: theme.colorScheme.primary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
           actions: [
           // Saved posts
           Builder(

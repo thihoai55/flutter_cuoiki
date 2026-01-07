@@ -150,11 +150,21 @@ class _LoginScreenState extends State<LoginScreen> {
                             value: _remember,
                             onChanged: (v) => setState(() => _remember = v ?? false),
                           ),
-                          const Text('Ghi nhớ đăng nhập'),
+                          Flexible(
+                            child: Text(
+                              'Ghi nhớ đăng nhập',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                           const Spacer(),
-                          TextButton(
-                            onPressed: () {},
-                            child: const Text('Quên mật khẩu?'),
+                          Flexible(
+                            child: TextButton(
+                              onPressed: () {},
+                              child: const Text(
+                                'Quên mật khẩu?',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                           ),
                         ],
                       ),

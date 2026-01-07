@@ -268,32 +268,11 @@ class _RechargeScreenState extends State<RechargeScreen> {
       return;
     }
 
-    final orderId = 'RC${DateTime.now().millisecondsSinceEpoch}';
     final description = 'Nạp ví qua ${_method.toUpperCase()}';
 
-    final paid = await Navigator.of(context).push<bool>(
-          MaterialPageRoute(
-            builder: (_) => MockGatewayScreen(
-              amount: total,
-              method: _method,
-              description: description,
-              orderId: orderId,
-            ),
-          ),
-        ) ??
-        false;
-
-    if (!mounted) return;
-    setState(() => _processing = false);
-
-    if (!paid) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Thanh toán chưa hoàn tất.')),
-      );
-      return;
-    }
-
+    // Xác nhận thanh toán ngay lập tức
     final ok = wallet.recharge(total, paymentMethod: _method.toUpperCase(), userId: currentUser.id);
+    setState(() => _processing = false);
     setState(() {
       _success = ok;
       _lastAmount = ok ? total : 0;

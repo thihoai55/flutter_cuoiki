@@ -282,18 +282,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       initials: (_nameCtrl.text.isNotEmpty ? _nameCtrl.text[0].toUpperCase() : 'U'),
                     ),
                     const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ElevatedButton.icon(
-                          onPressed: _pickAvatar,
-                          icon: const Icon(Icons.photo_library_outlined),
-                          label: const Text('Chọn ảnh từ máy'),
-                        ),
-                        const SizedBox(height: 6),
-                        SizedBox(
-                          width: 260,
-                          child: TextField(
+                    Flexible(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: _pickAvatar,
+                            icon: const Icon(Icons.photo_library_outlined),
+                            label: const Text('Chọn ảnh từ máy'),
+                          ),
+                          const SizedBox(height: 6),
+                          TextField(
                             controller: _avatarCtrl,
                             decoration: const InputDecoration(
                               isDense: true,
@@ -301,16 +300,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               prefixIcon: Icon(Icons.link_outlined),
                             ),
                           ),
-                        ),
-                        if (_avatarPath != null && _avatarPath!.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              'Đang dùng ảnh trong máy',
-                              style: TextStyle(color: Colors.green[700], fontSize: 12),
+                          if (_avatarPath != null && _avatarPath!.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                'Đang dùng ảnh trong máy',
+                                style: TextStyle(color: Colors.green[700], fontSize: 12),
+                              ),
                             ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
                   ],
                 ),

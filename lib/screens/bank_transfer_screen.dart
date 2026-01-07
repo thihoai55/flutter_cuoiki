@@ -81,27 +81,8 @@ class _BankTransferScreenState extends State<BankTransferScreen> {
           'Nhận thanh toán từ ${currentUser.name}',
         );
       } else {
-        final orderId = 'OD${widget.transaction.id}-${DateTime.now().millisecondsSinceEpoch}';
-        final paid = await Navigator.of(context).push<bool>(
-              MaterialPageRoute(
-                builder: (_) => MockGatewayScreen(
-                  amount: amount,
-                  method: _paymentMethod,
-                  description: note,
-                  orderId: orderId,
-                ),
-              ),
-            ) ??
-            false;
-
-        if (!mounted) return;
-        if (!paid) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Thanh toán chưa hoàn tất.')),
-          );
-          setState(() => _processing = false);
-          return;
-        }
+        // Thanh toán qua VNPay/Momo - xác nhận ngay lập tức
+        // (không cần chuyển đến màn hình giả lập)
 
         // Log buyer transaction and add to seller's wallet after user xác nhận đã thanh toán
         final walletProvider = context.read<WalletProvider>();
