@@ -12,7 +12,6 @@ import '../providers/wallet_provider.dart';
 import '../providers/notification_provider.dart';
 import '../providers/follow_provider.dart';
 import 'user_profile_screen.dart';
-import 'mock_gateway_screen.dart';
 
 const _categories = <String>[
   'Sách & Tài liệu',

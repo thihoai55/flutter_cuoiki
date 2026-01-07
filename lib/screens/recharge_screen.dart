@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import '../providers/wallet_provider.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/main_layout.dart';
-import 'mock_gateway_screen.dart';
 
 class RechargeScreen extends StatefulWidget {
   const RechargeScreen({super.key});
@@ -267,8 +266,6 @@ class _RechargeScreenState extends State<RechargeScreen> {
       setState(() => _processing = false);
       return;
     }
-
-    final description = 'Nạp ví qua ${_method.toUpperCase()}';
 
     // Xác nhận thanh toán ngay lập tức
     final ok = wallet.recharge(total, paymentMethod: _method.toUpperCase(), userId: currentUser.id);

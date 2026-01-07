@@ -9,7 +9,6 @@ import '../models/post.dart';
 import '../widgets/main_layout.dart';
 import 'order_tracking_screen.dart';
 import '../widgets/post_image.dart';
-import 'mock_gateway_screen.dart';
 
 class BankTransferScreen extends StatefulWidget {
   const BankTransferScreen({

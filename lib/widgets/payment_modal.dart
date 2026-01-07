@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../providers/wallet_provider.dart';
 import '../providers/auth_provider.dart';
-import '../screens/mock_gateway_screen.dart';
 
 class PaymentModal extends StatefulWidget {
   const PaymentModal({
