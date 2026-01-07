@@ -97,7 +97,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   final _priceCtrl = TextEditingController();
   final _locationCtrl = TextEditingController();
   final _contactCtrl = TextEditingController();
-
   String _type = 'sell'; // sell or buy
   String _category = _categories.first;
   String _condition = 'Mới';

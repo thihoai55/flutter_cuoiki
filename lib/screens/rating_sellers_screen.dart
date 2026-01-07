@@ -87,10 +87,19 @@ class RatingSellersScreen extends StatelessWidget {
                       return const SizedBox.shrink();
                     }
                     
+                    // Check if current user has already rated this person in this specific role
+                    final currentUserId = user.id;
+                    final alreadyRated = postProvider.ratings.any((r) =>
+                      r.sellerId == person.id && 
+                      r.raterUserId == currentUserId &&
+                      (r.role ?? 'seller') == role // Kiểm tra cả vai trò (seller/buyer), default là 'seller'
+                    );
+                    
                     return _PersonRatingCard(
                       person: person,
                       isSeller: isSeller,
                       transactionCount: transactions.length,
+                      isAlreadyRated: alreadyRated,
                       onRate: () => _showRatingModal(context, person, isSeller),
                     );
                   },
@@ -117,12 +126,14 @@ class _PersonRatingCard extends StatelessWidget {
     required this.isSeller,
     required this.transactionCount,
     required this.onRate,
+    this.isAlreadyRated = false,
   });
 
   final AppUser person;
   final bool isSeller;
   final int transactionCount;
   final VoidCallback onRate;
+  final bool isAlreadyRated;
 
   @override
   Widget build(BuildContext context) {
@@ -233,16 +244,19 @@ class _PersonRatingCard extends StatelessWidget {
           SizedBox(
             height: 32,
             child: ElevatedButton(
-              onPressed: onRate,
+              onPressed: isAlreadyRated ? null : onRate,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2563EB),
+                backgroundColor: isAlreadyRated ? Colors.grey : const Color(0xFF2563EB),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 minimumSize: const Size(0, 32),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: const Text('Đánh giá', style: TextStyle(fontSize: 13)),
+              child: Text(
+                isAlreadyRated ? 'Đã đánh giá' : 'Đánh giá',
+                style: const TextStyle(fontSize: 13),
+              ),
             ),
           ),
         ],
@@ -397,7 +411,7 @@ class _RatingModalState extends State<_RatingModal> {
 
     if (currentUser == null) return;
 
-    // Lưu rating vào PostProvider
+    // Lưu rating vào PostProvider với vai trò của người được đánh giá
     final newRating = SellerRating(
       id: 'rating_${DateTime.now().millisecondsSinceEpoch}',
       sellerId: widget.person.id,
@@ -408,6 +422,7 @@ class _RatingModalState extends State<_RatingModal> {
       raterUserId: currentUser.id,
       raterName: currentUser.name,
       raterAvatar: currentUser.avatar,
+      role: widget.isSeller ? 'seller' : 'buyer', // Lưu vai trò của người được đánh giá
     );
     
     postProvider.addRating(newRating);

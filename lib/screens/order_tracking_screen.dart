@@ -61,17 +61,41 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
           ? widget.transaction.buyerInfo.address.trim()
           : 'Ho Chi Minh City';
 
-      final sellerGeo = await _geocodeAddress(sellerAddress);
-      final buyerGeo = await _geocodeAddress(buyerAddress);
+      // Try to geocode addresses, but continue with defaults if it fails
+      LatLng? sellerGeo;
+      LatLng? buyerGeo;
+      
+      try {
+        sellerGeo = await _geocodeAddress(sellerAddress);
+      } catch (e) {
+        print('Warning: Failed to geocode seller address: $e');
+      }
+      
+      try {
+        buyerGeo = await _geocodeAddress(buyerAddress);
+      } catch (e) {
+        print('Warning: Failed to geocode buyer address: $e');
+      }
 
       if (!mounted) return;
 
-      setState(() {
-        sellerLatLng = sellerGeo ?? sellerLatLng;
-        buyerLatLng = buyerGeo ?? buyerLatLng;
-      });
+      // Update coordinates with geocoded values or keep defaults
+      if (sellerGeo != null) {
+        sellerLatLng = sellerGeo;
+      }
+      if (buyerGeo != null) {
+        buyerLatLng = buyerGeo;
+      }
 
-      await _fetchRoute(sellerLatLng, buyerLatLng);
+      // Try to fetch route, but still display map if it fails
+      try {
+        await _fetchRoute(sellerLatLng, buyerLatLng);
+      } catch (e) {
+        print('Warning: Failed to fetch route: $e');
+        if (mounted) {
+          setState(() => isLoadingRoute = false);
+        }
+      }
     } catch (e) {
       print('Error loading route: $e');
       if (mounted) {
@@ -81,37 +105,55 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   }
 
   Future<LatLng?> _geocodeAddress(String address) async {
+    if (address.isEmpty) {
+      return null;
+    }
+    
     try {
       final encoded = Uri.encodeComponent(address);
       final url = 'https://nominatim.openstreetmap.org/search?q=$encoded&format=json&limit=1&addressdetails=0&countrycodes=vn';
+      
       final response = await http.get(
         Uri.parse(url),
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         },
       ).timeout(
-        const Duration(seconds: 25),
-        onTimeout: () => http.Response('timeout', 500),
+        const Duration(seconds: 20),
+        onTimeout: () {
+          print('Geocode timeout for: $address');
+          return http.Response('[]', 408);
+        },
       );
 
       if (response.statusCode != 200) {
-        print('Geocode error: statusCode=${response.statusCode}');
+        print('Geocode error: statusCode=${response.statusCode}, address=$address');
         return null;
       }
       
-      final body = jsonDecode(response.body) as List<dynamic>;
-      if (body.isEmpty) {
+      final dynamic body = jsonDecode(response.body);
+      if (body is! List || body.isEmpty) {
         print('No geocode results for: $address');
         return null;
       }
       
       final item = body.first as Map<String, dynamic>;
-      final lat = double.tryParse(item['lat'] as String? ?? '') ?? 0;
-      final lon = double.tryParse(item['lon'] as String? ?? '') ?? 0;
-      if (lat == 0 && lon == 0) {
+      final latStr = item['lat'] as String?;
+      final lonStr = item['lon'] as String?;
+      
+      if (latStr == null || lonStr == null) {
+        print('Missing coordinates in geocode response for: $address');
+        return null;
+      }
+      
+      final lat = double.tryParse(latStr);
+      final lon = double.tryParse(lonStr);
+      
+      if (lat == null || lon == null || (lat == 0.0 && lon == 0.0)) {
         print('Invalid coordinates for: $address');
         return null;
       }
+      
       print('Geocoded "$address" to LatLng($lat, $lon)');
       return LatLng(lat, lon);
     } catch (e) {
@@ -133,53 +175,81 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         },
       ).timeout(
-        const Duration(seconds: 25),
-        onTimeout: () => http.Response('{"code":"timeout"}', 500),
+        const Duration(seconds: 20),
+        onTimeout: () {
+          print('Route fetch timeout');
+          return http.Response('{"code":"timeout"}', 408);
+        },
       );
 
-      if (response.statusCode == 200) {
-        try {
-          final data = jsonDecode(response.body) as Map<String, dynamic>;
-          
-          if (data['code'] != 'Ok' || (data['routes'] as List?)?.isEmpty != false) {
-            print('OSRM returned code: ${data['code']}');
-            if (mounted) {
-              setState(() => isLoadingRoute = false);
-            }
-            return;
-          }
+      if (response.statusCode != 200) {
+        print('OSRM error: statusCode=${response.statusCode}');
+        if (mounted) {
+          setState(() => isLoadingRoute = false);
+        }
+        return;
+      }
 
-          final geometry = data['routes'][0]['geometry'] as Map<String, dynamic>;
-          final coordinates = geometry['coordinates'] as List;
-
-          if (coordinates.isEmpty) {
-            print('No coordinates in route');
-            if (mounted) {
-              setState(() => isLoadingRoute = false);
-            }
-            return;
-          }
-
-          final points = coordinates.map<LatLng>((coord) {
-            return LatLng((coord[1] as num).toDouble(), (coord[0] as num).toDouble());
-          }).toList();
-
-          print('Loaded ${points.length} route points');
-
-          if (!mounted) return;
-
-          setState(() {
-            routePoints = points;
-            isLoadingRoute = false;
-          });
-        } catch (parseError) {
-          print('Error parsing OSRM response: $parseError');
+      try {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        
+        final code = data['code'] as String?;
+        if (code != 'Ok') {
+          print('OSRM returned code: $code');
           if (mounted) {
             setState(() => isLoadingRoute = false);
           }
+          return;
         }
-      } else {
-        print('OSRM error: statusCode=${response.statusCode}, body=${response.body.substring(0, 100)}');
+
+        final routes = data['routes'] as List?;
+        if (routes == null || routes.isEmpty) {
+          print('No routes found in OSRM response');
+          if (mounted) {
+            setState(() => isLoadingRoute = false);
+          }
+          return;
+        }
+
+        final geometry = routes[0]['geometry'] as Map<String, dynamic>?;
+        if (geometry == null) {
+          print('No geometry in route');
+          if (mounted) {
+            setState(() => isLoadingRoute = false);
+          }
+          return;
+        }
+
+        final coordinates = geometry['coordinates'] as List?;
+        if (coordinates == null || coordinates.isEmpty) {
+          print('No coordinates in route geometry');
+          if (mounted) {
+            setState(() => isLoadingRoute = false);
+          }
+          return;
+        }
+
+        final points = coordinates.map<LatLng>((coord) {
+          try {
+            final lon = (coord[0] as num).toDouble();
+            final lat = (coord[1] as num).toDouble();
+            return LatLng(lat, lon);
+          } catch (e) {
+            print('Error parsing coordinate: $coord, error: $e');
+            rethrow;
+          }
+        }).toList();
+
+        print('Loaded ${points.length} route points');
+
+        if (!mounted) return;
+
+        setState(() {
+          routePoints = points;
+          isLoadingRoute = false;
+        });
+      } catch (parseError) {
+        print('Error parsing OSRM response: $parseError');
         if (mounted) {
           setState(() => isLoadingRoute = false);
         }
@@ -488,96 +558,107 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       (sellerLatLng.longitude + buyerLatLng.longitude) / 2,
     );
 
-    return FlutterMap(
-      options: MapOptions(
-        center: mapCenter,
-        zoom: 13.0,
-        minZoom: 5.0,
-        maxZoom: 19.0,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: FlutterMap(
+        options: MapOptions(
+          center: mapCenter,
+          zoom: 13.0,
+          minZoom: 5.0,
+          maxZoom: 19.0,
+        ),
+        children: [
+          // Lớp bản đồ OpenStreetMap
+          TileLayer(
+            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            userAgentPackageName: 'com.example.app',
+          ),
+          // Alternative fallback tile layer (CartoDB) - commented for now
+          // TileLayer(
+          //   urlTemplate: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+          //   subdomains: const ['a', 'b', 'c', 'd'],
+          //   userAgentPackageName: 'com.example.app',
+          // ),
+          
+          // Polyline cho đường giao hàng thực tế
+          PolylineLayer(
+            polylines: [
+              Polyline(
+                points: polylinePoints,
+                strokeWidth: 4,
+                color: const Color(0xFF2563EB),
+                borderStrokeWidth: 2,
+                borderColor: Colors.white,
+              ),
+            ],
+          ),
+          
+          // Marker cho người bán
+          MarkerLayer(
+            markers: [
+              Marker(
+                point: sellerLatLng,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF16A34A),
+                        shape: BoxShape.circle,
+                        boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)],
+                      ),
+                      child: const Icon(Icons.store, size: 20, color: Colors.white),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2)],
+                      ),
+                      child: Text(
+                        tx.sellerName,
+                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Marker cho người mua
+              Marker(
+                point: buyerLatLng,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFEF4444),
+                        shape: BoxShape.circle,
+                        boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)],
+                      ),
+                      child: const Icon(Icons.home, size: 20, color: Colors.white),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2)],
+                      ),
+                      child: Text(
+                        tx.buyerName,
+                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
-      children: [
-        // Lớp bản đồ OpenStreetMap
-        TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'com.example.app',
-        ),
-        // Polyline cho đường giao hàng thực tế
-        PolylineLayer(
-          polylines: [
-            Polyline(
-              points: polylinePoints,
-              strokeWidth: 4,
-              color: const Color(0xFF2563EB),
-              borderStrokeWidth: 2,
-              borderColor: Colors.white,
-            ),
-          ],
-        ),
-        // Marker cho người bán
-        MarkerLayer(
-          markers: [
-            Marker(
-              point: sellerLatLng,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF16A34A),
-                      shape: BoxShape.circle,
-                      boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)],
-                    ),
-                    child: const Icon(Icons.store, size: 20, color: Colors.white),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(4),
-                      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2)],
-                    ),
-                    child: Text(
-                      tx.sellerName,
-                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Marker cho người mua
-            Marker(
-              point: buyerLatLng,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFEF4444),
-                      shape: BoxShape.circle,
-                      boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)],
-                    ),
-                    child: const Icon(Icons.home, size: 20, color: Colors.white),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(4),
-                      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2)],
-                    ),
-                    child: Text(
-                      tx.buyerName,
-                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ],
     );
   }
 
