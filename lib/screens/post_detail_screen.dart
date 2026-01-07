@@ -1002,6 +1002,33 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     );
   }
 
+  /// ============ QUY TRÌNH ĐẶT MUA HÀNG (KHÁCH HÀNG) ============
+  /// 
+  /// Hàm này được gọi khi người mua click button "Mua ngay" ở dưới cùng màn hình chi tiết bài đăng
+  /// 
+  /// BƯỚC 1: Show dialog nhập thông tin
+  ///   - Tên, SĐT, địa chỉ giao hàng
+  ///   - Hình thức thanh toán: COD hoặc chuyển khoản
+  /// 
+  /// BƯỚC 2: Khi người dùng click "Xác nhận mua" → gửi onConfirm callback
+  ///   - Tạo object PurchaseTransaction mới với:
+  ///     * id: timestamp (unique ID)
+  ///     * postId: bài hàng cần mua
+  ///     * sellerId/buyerId: người bán/mua
+  ///     * timestamp: lúc đặt hàng
+  ///     * status: 'pending' (chờ duyệt) hoặc 'awaiting_payment' (chờ thanh toán)
+  ///     * buyerInfo: tên/SĐT/địa chỉ giao hàng
+  ///   - Gửi postProvider.addTransaction(tx) ← LƯU TRỮ MỤC RAM (không persist!)
+  /// 
+  /// BƯỚC 3: Gửi thông báo cho người bán
+  ///   - Gửi notifProvider.addNotification()
+  ///   - Thông báo PERSIST vào SharedPreferences qua NotificationStorageService
+  ///   - Người bán sẽ thấy thông báo \"Có yêu cầu mua mới\" ở thông báo & AdminPendingPostsScreen
+  /// 
+  /// NGƯỜI MUA CÓ THỂ XEM ĐƠN HÀNG:
+  ///   - MyOrdersScreen: xem danh sách đơn hàng của mình (gọi postProvider.transactionsBy(userId))
+  ///   - OrderTrackingScreen: xem chi tiết & tracking từng đơn hàng
+  /// 
   Future<void> _showBuyNowDialog(PostItem post, AppUser currentUser) async {
     await PurchaseConfirmDialog.show(
       context,
@@ -1012,31 +1039,35 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       initialPhone: currentUser.phone,
       initialAddress: currentUser.address,
       onConfirm: (buyerInfo) {
-        // Tạo giao dịch mua và thông báo đến người bán
+        // ===== BƯỚC 2: Tạo transaction object =====
         final postProvider = context.read<PostProvider>();
         final notifProvider = context.read<NotificationProvider>();
         final tx = PurchaseTransaction(
-          id: 'tx_${DateTime.now().millisecondsSinceEpoch}',
-          postId: post.id,
-          sellerId: post.authorId,
-          sellerName: post.authorName,
-          buyerId: currentUser.id,
-          buyerName: currentUser.name,
-          timestamp: DateTime.now(),
+          id: 'tx_${DateTime.now().millisecondsSinceEpoch}', // Unique ID
+          postId: post.id, // Bài hàng cần mua
+          sellerId: post.authorId, // ID người bán
+          sellerName: post.authorName, // Tên người bán
+          buyerId: currentUser.id, // ID người mua
+          buyerName: currentUser.name, // Tên người mua
+          timestamp: DateTime.now(), // Lúc đặt hàng
+          // Status tùy hình thức thanh toán:
+          // - COD (trả tiền khi nhận) → pending (chờ duyệt)
+          // - Chuyển khoản → awaiting_payment (chờ xác nhận thanh toán)
           status: buyerInfo.paymentMethod == 'bank_transfer' ? 'awaiting_payment' : 'pending',
-          buyerInfo: buyerInfo,
-          sellerAvatar: post.authorAvatar,
-          buyerAvatar: currentUser.avatar,
+          buyerInfo: buyerInfo, // Tên/SĐT/địa chỉ giao hàng
+          sellerAvatar: post.authorAvatar, // Avatar người bán
+          buyerAvatar: currentUser.avatar, // Avatar người mua
         );
-        postProvider.addTransaction(tx);
+        // ===== BƯỚC 2B: Lưu transaction vào RAM (NOT PERSISTENT!) =====
+        postProvider.addTransaction(tx); // ← Chỉ lưu trong _transactions list (RAM)
 
-        // Gửi thông báo tới người bán
+        // ===== BƯỚC 3: Gửi thông báo cho người bán =====
         notifProvider.addNotification(
-          userId: post.authorId,
-          type: 'transaction',
+          userId: post.authorId, // Gửi cho người bán
+          type: 'transaction', // Loại thông báo: giao dịch
           message: '${currentUser.name} đã gửi yêu cầu mua bài: ${post.title}',
           postId: post.id,
-        );
+        ); // ← Thông báo sẽ persist vào SharedPreferences
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Đã gửi yêu cầu mua hàng!')),

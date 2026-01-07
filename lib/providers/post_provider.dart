@@ -443,16 +443,39 @@ class PostProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Purchase transaction
+  /// ============ QUY TRÌNH ĐẶT MUA HÀNG & CẬP NHẬT TRẠNG THÁI ============
+  /// 
+  /// LƯU TRỮ: Dữ liệu transaction chỉ lưu trong RAM (_transactions list), KHÔNG persist 
+  /// vào SharedPreferences. Nếu user tắt/reload app, tất cả transaction sẽ mất. 
+  /// Cần thêm transaction_storage_service.dart để persist như post storage.
+  /// 
+  /// FLOW ĐẶT HÀNG:
+  /// 1. Người mua click "Mua ngay" ở PostDetailScreen
+  /// 2. Show dialog "Xác nhận mua", nhập tên/SĐT/địa chỉ
+  /// 3. Tạo PurchaseTransaction object gửi addTransaction() ← HÀM NÀY
+  /// 4. Lưu vào _transactions (RAM)
+  /// 5. Gửi thông báo cho người bán qua NotificationProvider (persist vào SharedPreferences)
+  /// 
+  /// FLOW CẬP NHẬT TRẠNG THÁI:
+  /// - pending → approved (người bán duyệt)
+  /// - approved → shipping (bắt đầu giao hàng)
+  /// - shipping → completed (hoàn thành giao hàng)
+  /// Người mua xem ở MyOrdersScreen hoặc OrderTrackingScreen
+  /// 
   void addTransaction(PurchaseTransaction transaction) {
+    // Thêm transaction mới vào danh sách lưu tạm trong RAM
     _transactions.add(transaction);
+    // Thông báo cho tất cả listeners (screens) để cập nhật UI
     notifyListeners();
   }
 
+  /// Cập nhật trạng thái transaction (pending → approved → shipping → completed)
+  /// Lưu tạm trong RAM chỉ, sẽ mất khi reload app!
   void updateTransactionStatus(String transactionId, String status) {
     final idx = _transactions.indexWhere((t) => t.id == transactionId);
     if (idx == -1) return;
     _transactions[idx].status = status;
+    // Thông báo UI cập nhật trạng thái transaction
     notifyListeners();
   }
   

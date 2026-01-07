@@ -15,6 +15,7 @@ import 'services/post_storage_service.dart';
 import 'services/notification_storage_service.dart';
 import 'services/chat_storage_service.dart';
 import 'services/follow_storage_service.dart';
+import 'services/auth_storage_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,6 +23,7 @@ void main() async {
   await NotificationStorageService.init();
   await ChatStorageService.init();
   await FollowStorageService.init();
+  await AuthStorageService.init(); // ← Khởi tạo auth storage
   runApp(const MyApp());
 }
 
@@ -96,6 +98,7 @@ class _RootRouterState extends State<RootRouter> {
     final auth = context.read<AuthProvider>();
     final posts = context.read<PostProvider>();
     await Future.wait([
+      auth.tryAutoLogin(),  // ← Tự động đăng nhập nếu có userId đã lưu
       auth.loadUsers(),
       posts.loadPosts(),
     ]);

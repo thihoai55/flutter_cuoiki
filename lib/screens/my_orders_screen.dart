@@ -8,6 +8,25 @@ import '../widgets/main_layout.dart';
 import 'order_tracking_screen.dart';
 import '../widgets/post_image.dart';
 
+/// ============ MÀN HÌNH ĐƠN HÀNG CỦA TÔI (NGƯỜI MUA) ============
+/// 
+/// Chức năng: Hiển thị danh sách tất cả đơn hàng mà người mua đã đặt
+/// 
+/// NGUỒN DỮ LIỆU:
+/// - PostProvider._transactions (RAM list chứa PurchaseTransaction)
+/// - Filter: tx.buyerId == currentUser.id (chỉ lấy đơn của người mua hiện tại)
+/// - Sort: mới nhất → cũ nhất (giảm dần theo timestamp)
+/// 
+/// TRẠNG THÁI ĐƠN HÀNG:
+/// 1. 'awaiting_payment': Chờ thanh toán (nếu chọn chuyển khoản)
+/// 2. 'pending': Chờ người bán duyệt
+/// 3. 'approved': Người bán đã duyệt, chờ giao hàng
+/// 4. 'shipping': Đang giao hàng (hiển thị bản đồ tracking)
+/// 5. 'completed': Hoàn thành giao hàng
+/// 6. 'cancelled': Bị hủy
+/// 
+/// CLICK VÀO ĐƠN HÀNG: → OrderTrackingScreen (xem chi tiết & tracking bản đồ)
+/// 
 class MyOrdersScreen extends StatelessWidget {
   const MyOrdersScreen({super.key});
 
@@ -17,12 +36,13 @@ class MyOrdersScreen extends StatelessWidget {
     final postProvider = context.watch<PostProvider>();
     final user = auth.currentUser;
 
-    // Get orders where current user is the buyer
+    // ===== BƯỚC 1: Lấy danh sách đơn hàng của người mua hiện tại =====
+    // Từ postProvider._transactions, filter những transaction có buyerId = currentUser.id
     final myOrders = user == null
         ? <PurchaseTransaction>[]
         : postProvider.transactions.where((tx) => tx.buyerId == user.id).toList();
 
-    // Sort by timestamp descending (newest first)
+    // ===== BƯỚC 2: Sắp xếp theo thời gian (mới nhất trước) =====
     myOrders.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
     return MainLayoutWithCustomAppBar(

@@ -536,7 +536,22 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     );
   }
 
+  /// ===================================================================
+  /// HÀM VẼ BẢN ĐỒ THEO DÕI GIAO HÀNG
+  /// ===================================================================
+  /// 
+  /// CHỨC NĂNG:
+  /// - Hiển thị bản đồ với vị trí người bán và người mua
+  /// - Vẽ đường đi từ người bán → người mua
+  /// - Đánh dấu 2 điểm trên bản đồ
+  /// 
+  /// THƯ VIỆN SỬ DỤNG:
+  /// - flutter_map: thư viện vẽ bản đồ
+  /// - latlong2: định nghĩa tọa độ (vĩ độ, kinh độ)
+  /// - OpenStreetMap: nền bản đồ miễn phí
+  /// ===================================================================
   Widget _buildMapWidget(PurchaseTransaction tx) {
+    // ===== BƯỚC 1: KIỂM TRA LOADING =====
     // Nếu đang tải route, hiển thị loading indicator
     if (isLoadingRoute) {
       return Center(
@@ -551,65 +566,94 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       );
     }
 
-    // Nếu không có route points, dùng đường thẳng
+    // ===== BƯỚC 2: TẠO ĐƯỜNG ĐI =====
+    // 
+    // HIỆN TẠI: Dùng đường thẳng (fake route)
+    // - routePoints rỗng → dùng đường thẳng từ seller → buyer
+    // - Không phải đường đi thực tế theo đường phố
+    // 
+    // NÂNG CẤP: Gọi API routing (OSRM/Google Directions)
+    // - Lấy danh sách điểm theo đường phố
+    // - routePoints = [point1, point2, point3, ...]
     final polylinePoints = routePoints.isEmpty ? [sellerLatLng, buyerLatLng] : routePoints;
+    
+    // ===== BƯỚC 3: TÍNH ĐIỂM GIỮA BẢN ĐỒ =====
+    // Tính tọa độ trung tâm giữa người bán và người mua
+    // Để bản đồ zoom vào giữa 2 điểm
     final mapCenter = LatLng(
-      (sellerLatLng.latitude + buyerLatLng.latitude) / 2,
-      (sellerLatLng.longitude + buyerLatLng.longitude) / 2,
+      (sellerLatLng.latitude + buyerLatLng.latitude) / 2,    // Vĩ độ trung bình
+      (sellerLatLng.longitude + buyerLatLng.longitude) / 2,  // Kinh độ trung bình
     );
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: FlutterMap(
+        // ===== CẤU HÌNH BẢN ĐỒ =====
         options: MapOptions(
-          center: mapCenter,
-          zoom: 13.0,
-          minZoom: 5.0,
-          maxZoom: 19.0,
+          center: mapCenter,  // Điểm giữa bản đồ
+          zoom: 13.0,         // Mức zoom (13 = vừa phải, xem được khu vực)
+          minZoom: 5.0,       // Zoom tối thiểu (5 = xem cả thành phố)
+          maxZoom: 19.0,      // Zoom tối đa (19 = xem rõ từng con đường)
         ),
         children: [
-          // Lớp bản đồ OpenStreetMap
+          // ===== LỚP 1: NỀN BẢN ĐỒ (OPENSTREETMAP) =====
+          // 
+          // OPENSTREETMAP LÀ GÌ?
+          // - Bản đồ mã nguồn mở, miễn phí
+          // - Tương tự Google Maps nhưng không cần API key
+          // - Lấy hình ảnh bản đồ từ server OSM
+          // 
+          // URL TEMPLATE:
+          // - {z} = zoom level
+          // - {x}, {y} = vị trí tile (ô bản đồ)
+          // - Ví dụ: https://tile.openstreetmap.org/13/6421/3932.png
           TileLayer(
             urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
             userAgentPackageName: 'com.example.app',
           ),
-          // Alternative fallback tile layer (CartoDB) - commented for now
-          // TileLayer(
-          //   urlTemplate: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-          //   subdomains: const ['a', 'b', 'c', 'd'],
-          //   userAgentPackageName: 'com.example.app',
-          // ),
           
-          // Polyline cho đường giao hàng thực tế
+          // ===== LỚP 2: ĐƯỜNG ĐI (POLYLINE) =====
+          // 
+          // VẼ ĐƯỜNG TỪ NGƯỜI BÁN → NGƯỜI MUA
+          // - polylinePoints: danh sách các điểm tọa độ
+          // - Hiện tại: chỉ 2 điểm (đường thẳng)
+          // - Nên có: nhiều điểm theo đường phố
           PolylineLayer(
             polylines: [
               Polyline(
-                points: polylinePoints,
-                strokeWidth: 4,
-                color: const Color(0xFF2563EB),
-                borderStrokeWidth: 2,
+                points: polylinePoints,           // Danh sách điểm đường đi
+                strokeWidth: 4,                   // Độ dày đường (4 pixel)
+                color: const Color(0xFF2563EB),   // Màu xanh dương
+                borderStrokeWidth: 2,             // Viền trắng 2 pixel
                 borderColor: Colors.white,
               ),
             ],
           ),
           
-          // Marker cho người bán
+          // ===== LỚP 3: ĐIỂM ĐÁNH DẤU (MARKERS) =====
+          // 
+          // ĐÁNH DẤU 2 VỊ TRÍ:
+          // 1. Người bán (icon cửa hàng, màu xanh lá)
+          // 2. Người mua (icon nhà, màu đỏ)
           MarkerLayer(
             markers: [
+              // ----- MARKER NGƯỜI BÁN -----
               Marker(
-                point: sellerLatLng,
+                point: sellerLatLng,  // Tọa độ người bán (Lat, Lng)
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Icon cửa hàng màu xanh lá
                     Container(
                       padding: const EdgeInsets.all(6),
                       decoration: const BoxDecoration(
-                        color: Color(0xFF16A34A),
+                        color: Color(0xFF16A34A),  // Màu xanh lá
                         shape: BoxShape.circle,
                         boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)],
                       ),
                       child: const Icon(Icons.store, size: 20, color: Colors.white),
                     ),
+                    // Tên người bán
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
